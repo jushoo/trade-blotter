@@ -299,7 +299,9 @@ Verification:
 
 ## Step 9 — Build the Create Trade form ✅
 
-**Goal:** A user can create a trade with validation.
+**Goal:** A user can create a trade with validation. Uses TanStack Form with
+zod schemas passed directly (Standard Schema V1, no adapter). Fields are
+inlined with `<form.Field>` per shadcn docs.
 
 Tasks:
 
@@ -322,9 +324,12 @@ Verification:
 
 ---
 
-## Step 10 — Build the Amend and Cancel actions
+## Step 10 — Build the Amend and Cancel actions ✅
 
-**Goal:** A user can amend and cancel a trade from the grid.
+**Goal:** A user can amend and cancel a trade from the grid. Amend uses a
+shadcn Dialog with an inlined TanStack Form (same zod schemas). Cancel uses a
+`window.confirm` then `DELETE`. Both disabled when `CANCELLED`. Socket events
+update all clients; a `409` shows "The trade is not active." toast.
 
 Tasks:
 

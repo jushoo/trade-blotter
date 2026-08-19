@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgGridReact } from "ag-grid-react"
 import {
@@ -8,16 +8,17 @@ import {
   themeQuartz,
   type ColDef,
 } from "ag-grid-community"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Pencil, Ban } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { fetchTrades } from "@/lib/api"
+import { fetchTrades, cancelTrade } from "@/lib/api"
 import { getSocket, TRADE_EVENTS } from "@/lib/socket"
+import { AmendTradeDialog } from "./AmendTradeDialog"
+import { toast } from "sonner"
 import type { Trade } from "@/types"
 
 // Register community modules once. (v36 API.)
 ModuleRegistry.registerModules([AllCommunityModule])
 
-// Dev-only validations: human-readable console errors for misconfig.
 if (import.meta.env.DEV) {
   enableDevValidations()
 }
@@ -37,56 +38,43 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
 })
 
-const columnDefs: ColDef<Trade>[] = [
-  { field: "id",         headerName: "ID",         width: 120 },
-  { field: "symbol",     headerName: "Symbol",     width: 110 },
-  {
-    field: "side",
-    headerName: "Side",
-    width: 90,
-    cellClassRules: SIDE_CELL_CLASS_RULES,
-    cellClass: "font-semibold",
-  },
-  {
-    field: "quantity",
-    headerName: "Qty",
-    width: 100,
-    type: "numericColumn",
-    filter: "agNumberColumnFilter",
-    valueFormatter: (p) =>
-      p.value != null ? new Intl.NumberFormat("en-US").format(p.value) : "",
-  },
-  {
-    field: "price",
-    headerName: "Price",
-    width: 110,
-    type: "numericColumn",
-    filter: "agNumberColumnFilter",
-    valueFormatter: (p) =>
-      p.value != null ? currencyFormatter.format(p.value) : "",
-  },
-  { field: "trader",     headerName: "Trader",     width: 110 },
-  {
-    field: "tradeDate",
-    headerName: "Trade Date",
-    width: 200,
-    filter: "agDateColumnFilter",
-    valueFormatter: (p) =>
-      p.value ? new Date(p.value as string).toLocaleString("en-US") : "",
-  },
-  {
-    field: "status",
-    headerName: "Status",
-    width: 150,
-    cellClassRules: STATUS_CELL_CLASS_RULES,
-  },
-]
+/** Grid context passed to the actions cell renderer. */
+interface BlotterContext {
+  onAmend: (trade: Trade) => void
+  onCancel: (trade: Trade) => void
+}
 
-const defaultColDef: ColDef = {
-  resizable: true,
-  sortable: true,
-  filter: true,
-  minWidth: 80,
+/** Row actions cell renderer. Reads callbacks from grid context. */
+function ActionsCell(props: {
+  data?: Trade
+  context?: BlotterContext
+}) {
+  const trade = props.data
+  const ctx = props.context
+  if (!trade || !ctx) return null
+  const cancelled = trade.status === "CANCELLED"
+  return (
+    <div className="flex gap-1">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Amend trade"
+        disabled={cancelled}
+        onClick={() => ctx.onAmend(trade)}
+      >
+        <Pencil />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Cancel trade"
+        disabled={cancelled}
+        onClick={() => ctx.onCancel(trade)}
+      >
+        <Ban />
+      </Button>
+    </div>
+  )
 }
 
 export function TradeBlotter() {
@@ -96,8 +84,25 @@ export function TradeBlotter() {
     queryFn: fetchTrades,
   })
 
-  // Keep the cache in sync with the Socket.IO stream. A create adds a row;
-  // an amend or cancel replaces the row with the same id.
+  const [amendTrade, setAmendTrade] = useState<Trade | null>(null)
+  const [amendOpen, setAmendOpen] = useState(false)
+
+  const onAmend = (trade: Trade) => {
+    setAmendTrade(trade)
+    setAmendOpen(true)
+  }
+
+  const onCancel = async (trade: Trade) => {
+    if (!window.confirm(`Cancel trade ${trade.id}?`)) return
+    try {
+      const cancelled = await cancelTrade(trade.id)
+      toast.success(`Trade ${cancelled.id} cancelled.`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cancel failed.")
+    }
+  }
+
+  // Keep the cache in sync with the Socket.IO stream.
   useEffect(() => {
     const socket = getSocket()
 
@@ -123,7 +128,73 @@ export function TradeBlotter() {
     }
   }, [queryClient])
 
+  const columnDefs = useMemo<ColDef<Trade>[]>(
+    () => [
+      { field: "id", headerName: "ID", width: 120 },
+      { field: "symbol", headerName: "Symbol", width: 110 },
+      {
+        field: "side",
+        headerName: "Side",
+        width: 90,
+        cellClassRules: SIDE_CELL_CLASS_RULES,
+        cellClass: "font-semibold",
+      },
+      {
+        field: "quantity",
+        headerName: "Qty",
+        width: 100,
+        type: "numericColumn",
+        filter: "agNumberColumnFilter",
+        valueFormatter: (p) =>
+          p.value != null ? new Intl.NumberFormat("en-US").format(p.value) : "",
+      },
+      {
+        field: "price",
+        headerName: "Price",
+        width: 110,
+        type: "numericColumn",
+        filter: "agNumberColumnFilter",
+        valueFormatter: (p) =>
+          p.value != null ? currencyFormatter.format(p.value) : "",
+      },
+      { field: "trader", headerName: "Trader", width: 110 },
+      {
+        field: "tradeDate",
+        headerName: "Trade Date",
+        width: 200,
+        filter: "agDateColumnFilter",
+        valueFormatter: (p) =>
+          p.value ? new Date(p.value as string).toLocaleString("en-US") : "",
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        width: 150,
+        cellClassRules: STATUS_CELL_CLASS_RULES,
+      },
+      {
+        headerName: "Actions",
+        width: 110,
+        sortable: false,
+        filter: false,
+        cellRenderer: ActionsCell,
+        cellClass: "flex items-center",
+      },
+    ],
+    [],
+  )
+
+  const defaultColDef = useMemo<ColDef>(
+    () => ({ resizable: true, sortable: true, filter: true, minWidth: 80 }),
+    [],
+  )
+
   const theme = useMemo(() => themeQuartz, [])
+
+  const context = useMemo<BlotterContext>(
+    () => ({ onAmend, onCancel }),
+    [],
+  )
 
   return (
     <div className="flex flex-col gap-3">
@@ -148,9 +219,15 @@ export function TradeBlotter() {
           defaultColDef={defaultColDef}
           theme={theme}
           getRowId={(p) => p.data.id}
+          context={context}
           animateRows
         />
       </div>
+      <AmendTradeDialog
+        trade={amendTrade}
+        open={amendOpen}
+        onOpenChange={setAmendOpen}
+      />
     </div>
   )
 }
