@@ -297,7 +297,7 @@ Verification:
 
 ---
 
-## Step 9 — Build the Create Trade form
+## Step 9 — Build the Create Trade form ✅
 
 **Goal:** A user can create a trade with validation.
 
