@@ -212,7 +212,7 @@ Verification:
 
 ---
 
-## Step 6 — Add the frontend data layer
+## Step 6 — Add the frontend data layer ✅
 
 **Goal:** The frontend must fetch the trades from the API and keep the cache in
 sync with the socket stream.
