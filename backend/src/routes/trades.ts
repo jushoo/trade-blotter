@@ -1,9 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { db, trades, type Trade as TradeRow } from '../db'
-import { eq, and, desc, ne } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { broadcastTrade, TRADE_EVENTS } from '../plugins/socket'
-import { makeTradeId } from '../lib/trade-id'
 
 /**
  * Canonical trade object sent to and received by the API.
@@ -64,26 +63,19 @@ export const tradesRoutes: FastifyPluginAsync = async (fastify) => {
     return toTradeDTO(row)
   })
 
-  // Create a trade.
+  // Create a trade. The tradeId is a Postgres generated column derived from
+  // the serial id, so a single INSERT produces the full row.
   fastify.post('/trades', async (req, reply) => {
     const parsed = tradeInput.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() })
 
-    // Insert without the tradeId, then set the tradeId from the serial id.
     const [row] = await db
       .insert(trades)
-      .values({ ...parsed.data, tradeId: '' })
+      .values(parsed.data)
       .returning()
     if (!row) throw new Error('Insert returned no row')
-    const tradeId = makeTradeId(row.id)
-    const [updated] = await db
-      .update(trades)
-      .set({ tradeId })
-      .where(eq(trades.id, row.id))
-      .returning()
-    if (!updated) throw new Error('Update returned no row')
 
-    const dto = toTradeDTO(updated)
+    const dto = toTradeDTO(row)
     broadcastTrade(fastify.io, TRADE_EVENTS.CREATED, dto)
     return reply.code(201).send(dto)
   })

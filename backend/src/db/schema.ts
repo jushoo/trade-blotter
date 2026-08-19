@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { pgTable, pgEnum, serial, text, integer, doublePrecision, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core'
 
 export const side = pgEnum('side', ['BUY', 'SELL'])
@@ -9,8 +10,12 @@ export const trades = pgTable(
   {
     // Internal serial primary key. Not exposed by the API.
     id: serial('id').primaryKey(),
-    // Business id string, e.g. "TRD-100001". Unique. Set by the server.
-    tradeId: text('trade_id').notNull(),
+    // Business id string, e.g. "TRD-100001". Derived from the serial id by a
+    // Postgres stored generated column, so it is set in the same INSERT that
+    // creates the row. Read-only from the application.
+    tradeId: text('trade_id')
+      .generatedAlwaysAs(sql`'TRD-' || (id + 100000)::text`)
+      .notNull(),
     symbol: text('symbol').notNull(),
     side: side('side').notNull(),
     quantity: integer('quantity').notNull(),

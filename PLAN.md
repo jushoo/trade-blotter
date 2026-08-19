@@ -92,7 +92,9 @@ Verification:
 ## Step 2 — Generate the trade id on the server ✅
 
 **Goal:** The server must make the `id` value `TRD-` plus a zero-padded
-sequence.
+sequence. Implemented as a Postgres stored generated column
+(`'TRD-' || (id + 100000)::text`), set in the same INSERT that creates the row.
+No app-side helper, no second update.
 
 Tasks:
 
