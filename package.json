@@ -13,9 +13,9 @@
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck",
-    "db:generate": "pnpm --filter database run generate",
-    "db:migrate": "pnpm --filter database run migrate",
-    "db:seed": "pnpm --filter database run seed",
+    "db:push": "pnpm --filter backend run db:push",
+    "db:migrate": "pnpm --filter backend run db:migrate",
+    "db:seed": "pnpm --filter backend run seed",
     "up": "docker compose up -d",
     "down": "docker compose down"
   },
