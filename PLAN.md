@@ -240,7 +240,7 @@ Verification:
 
 ---
 
-## Step 7 — Wire the blotter grid to the API and the socket
+## Step 7 — Wire the blotter grid to the API and the socket ✅
 
 **Goal:** The grid must show the server data and update in real time.
 
