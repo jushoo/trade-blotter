@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AgGridReact } from "ag-grid-react"
 import {
   AllCommunityModule,
@@ -7,119 +8,225 @@ import {
   themeQuartz,
   type ColDef,
 } from "ag-grid-community"
+import { RefreshCw, Pencil, Ban } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { fetchTrades, cancelTrade } from "@/lib/api"
+import { getSocket, TRADE_EVENTS } from "@/lib/socket"
+import { AmendTradeDialog } from "./AmendTradeDialog"
+import { toast } from "sonner"
+import type { Trade } from "@/types"
 
 // Register community modules once. (v36 API.)
 ModuleRegistry.registerModules([AllCommunityModule])
 
-// Dev-only validations: human-readable console errors for misconfig.
 if (import.meta.env.DEV) {
   enableDevValidations()
 }
 
-/** A single equity trade row. */
-export interface Trade {
-  tradeId: string
-  symbol: string
-  side: "Buy" | "Sell"
-  quantity: number
-  price: number
-  status: "New" | "PartiallyFilled" | "Filled" | "Cancelled" | "Rejected"
-  trader: string
-  executedAt: string // ISO timestamp
-}
-
 const SIDE_CELL_CLASS_RULES: Record<string, (p: { value: string }) => boolean> = {
-  "text-emerald-600 dark:text-emerald-400": (p) => p.value === "Buy",
-  "text-red-600 dark:text-red-400": (p) => p.value === "Sell",
+  "text-emerald-600 dark:text-emerald-400": (p) => p.value === "BUY",
+  "text-red-600 dark:text-red-400": (p) => p.value === "SELL",
 }
 
 const STATUS_CELL_CLASS_RULES: Record<string, (p: { value: string }) => boolean> = {
-  "text-emerald-600 dark:text-emerald-400": (p) => p.value === "Filled",
-  "text-amber-600 dark:text-amber-400": (p) => p.value === "PartiallyFilled",
-  "text-muted-foreground": (p) =>
-    p.value === "Cancelled" || p.value === "Rejected",
+  "text-emerald-600 dark:text-emerald-400": (p) => p.value === "ACTIVE",
+  "text-muted-foreground": (p) => p.value === "CANCELLED",
 }
-
-const SAMPLE_TRADES: Trade[] = [
-  { tradeId: "T-1001", symbol: "AAPL",  side: "Buy",  quantity: 100,  price: 224.31, status: "Filled",          trader: "j.doe",   executedAt: "2025-08-19T14:02:11Z" },
-  { tradeId: "T-1002", symbol: "MSFT",  side: "Sell", quantity: 50,   price: 431.10, status: "PartiallyFilled", trader: "a.lee",   executedAt: "2025-08-19T14:05:48Z" },
-  { tradeId: "T-1003", symbol: "NVDA",  side: "Buy",  quantity: 200,  price: 128.45, status: "New",             trader: "j.doe",   executedAt: "2025-08-19T14:10:02Z" },
-  { tradeId: "T-1004", symbol: "TSLA",  side: "Sell", quantity: 75,   price: 201.18, status: "Rejected",        trader: "m.kim",   executedAt: "2025-08-19T14:12:30Z" },
-  { tradeId: "T-1005", symbol: "AMZN",  side: "Buy",  quantity: 120,  price: 175.92, status: "Filled",          trader: "a.lee",   executedAt: "2025-08-19T14:15:09Z" },
-  { tradeId: "T-1006", symbol: "GOOGL", side: "Sell", quantity: 30,   price: 162.04, status: "Cancelled",       trader: "m.kim",   executedAt: "2025-08-19T14:18:44Z" },
-]
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 })
 
-const columnDefs: ColDef<Trade>[] = [
-  { field: "tradeId",   headerName: "Trade ID",   width: 120 },
-  { field: "symbol",    headerName: "Symbol",     width: 110 },
-  {
-    field: "side",
-    headerName: "Side",
-    width: 90,
-    cellClassRules: SIDE_CELL_CLASS_RULES,
-    cellClass: "font-semibold",
-  },
-  {
-    field: "quantity",
-    headerName: "Qty",
-    width: 100,
-    type: "numericColumn",
-    valueFormatter: (p) =>
-      p.value != null ? new Intl.NumberFormat("en-US").format(p.value) : "",
-  },
-  {
-    field: "price",
-    headerName: "Price",
-    width: 110,
-    type: "numericColumn",
-    valueFormatter: (p) =>
-      p.value != null ? currencyFormatter.format(p.value) : "",
-  },
-  {
-    field: "status",
-    headerName: "Status",
-    width: 150,
-    cellClassRules: STATUS_CELL_CLASS_RULES,
-  },
-  { field: "trader",    headerName: "Trader",     width: 110 },
-  {
-    field: "executedAt",
-    headerName: "Executed At",
-    width: 200,
-    valueFormatter: (p) =>
-      p.value ? new Date(p.value as string).toLocaleString("en-US") : "",
-  },
-]
+/** Grid context passed to the actions cell renderer. */
+interface BlotterContext {
+  onAmend: (trade: Trade) => void
+  onCancel: (trade: Trade) => void
+}
+
+/** Row actions cell renderer. Reads callbacks from grid context. */
+function ActionsCell(props: {
+  data?: Trade
+  context?: BlotterContext
+}) {
+  const trade = props.data
+  const ctx = props.context
+  if (!trade || !ctx) return null
+  const cancelled = trade.status === "CANCELLED"
+  return (
+    <div className="flex gap-1">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Amend trade"
+        disabled={cancelled}
+        onClick={() => ctx.onAmend(trade)}
+      >
+        <Pencil />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Cancel trade"
+        disabled={cancelled}
+        onClick={() => ctx.onCancel(trade)}
+      >
+        <Ban />
+      </Button>
+    </div>
+  )
+}
 
 export function TradeBlotter() {
-  const [rowData] = useState<Trade[]>(SAMPLE_TRADES)
+  const queryClient = useQueryClient()
+  const { data, isFetching, refetch } = useQuery<Trade[]>({
+    queryKey: ["trades"],
+    queryFn: fetchTrades,
+  })
+
+  const [amendTrade, setAmendTrade] = useState<Trade | null>(null)
+  const [amendOpen, setAmendOpen] = useState(false)
+
+  const onAmend = (trade: Trade) => {
+    setAmendTrade(trade)
+    setAmendOpen(true)
+  }
+
+  const onCancel = async (trade: Trade) => {
+    if (!window.confirm(`Cancel trade ${trade.id}?`)) return
+    try {
+      const cancelled = await cancelTrade(trade.id)
+      toast.success(`Trade ${cancelled.id} cancelled.`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cancel failed.")
+    }
+  }
+
+  // Keep the cache in sync with the Socket.IO stream.
+  useEffect(() => {
+    const socket = getSocket()
+
+    const upsert = (trade: Trade) => {
+      queryClient.setQueryData<Trade[]>(["trades"], (prev) => {
+        if (!prev) return [trade]
+        const idx = prev.findIndex((t) => t.id === trade.id)
+        if (idx === -1) return [trade, ...prev]
+        const next = prev.slice()
+        next[idx] = trade
+        return next
+      })
+    }
+
+    socket.on(TRADE_EVENTS.CREATED, upsert)
+    socket.on(TRADE_EVENTS.AMENDED, upsert)
+    socket.on(TRADE_EVENTS.CANCELLED, upsert)
+
+    return () => {
+      socket.off(TRADE_EVENTS.CREATED, upsert)
+      socket.off(TRADE_EVENTS.AMENDED, upsert)
+      socket.off(TRADE_EVENTS.CANCELLED, upsert)
+    }
+  }, [queryClient])
+
+  const columnDefs = useMemo<ColDef<Trade>[]>(
+    () => [
+      { field: "id", headerName: "ID", width: 120 },
+      { field: "symbol", headerName: "Symbol", width: 110 },
+      {
+        field: "side",
+        headerName: "Side",
+        width: 90,
+        cellClassRules: SIDE_CELL_CLASS_RULES,
+        cellClass: "font-semibold",
+      },
+      {
+        field: "quantity",
+        headerName: "Qty",
+        width: 100,
+        type: "numericColumn",
+        filter: "agNumberColumnFilter",
+        valueFormatter: (p) =>
+          p.value != null ? new Intl.NumberFormat("en-US").format(p.value) : "",
+      },
+      {
+        field: "price",
+        headerName: "Price",
+        width: 110,
+        type: "numericColumn",
+        filter: "agNumberColumnFilter",
+        valueFormatter: (p) =>
+          p.value != null ? currencyFormatter.format(p.value) : "",
+      },
+      { field: "trader", headerName: "Trader", width: 110 },
+      {
+        field: "tradeDate",
+        headerName: "Trade Date",
+        width: 200,
+        filter: "agDateColumnFilter",
+        valueFormatter: (p) =>
+          p.value ? new Date(p.value as string).toLocaleString("en-US") : "",
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        width: 150,
+        cellClassRules: STATUS_CELL_CLASS_RULES,
+      },
+      {
+        headerName: "Actions",
+        width: 110,
+        sortable: false,
+        filter: false,
+        cellRenderer: ActionsCell,
+        cellClass: "flex items-center",
+      },
+    ],
+    [],
+  )
 
   const defaultColDef = useMemo<ColDef>(
-    () => ({
-      resizable: true,
-      sortable: true,
-      filter: true,
-      minWidth: 80,
-    }),
+    () => ({ resizable: true, sortable: true, filter: true, minWidth: 80 }),
     [],
   )
 
   const theme = useMemo(() => themeQuartz, [])
 
+  const context = useMemo<BlotterContext>(
+    () => ({ onAmend, onCancel }),
+    [],
+  )
+
   return (
-    <div className="h-[600px] w-full">
-      <AgGridReact<Trade>
-        rowData={rowData}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        theme={theme}
-        getRowId={(p) => p.data.tradeId}
-        animateRows
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {isFetching ? "Loading trades…" : `${data?.length ?? 0} trades`}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+        >
+          <RefreshCw className={isFetching ? "animate-spin" : ""} />
+          Refresh
+        </Button>
+      </div>
+      <div className="h-[600px] w-full">
+        <AgGridReact<Trade>
+          rowData={data}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          theme={theme}
+          getRowId={(p) => p.data.id}
+          context={context}
+          animateRows
+        />
+      </div>
+      <AmendTradeDialog
+        trade={amendTrade}
+        open={amendOpen}
+        onOpenChange={setAmendOpen}
       />
     </div>
   )

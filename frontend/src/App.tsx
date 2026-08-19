@@ -1,4 +1,6 @@
 import { TradeBlotter } from "@/components/TradeBlotter"
+import { CreateTradeForm } from "@/components/CreateTradeForm"
+import { Toaster } from "@/components/ui/sonner"
 
 function App() {
   return (
@@ -9,7 +11,9 @@ function App() {
           Real-time equity trade blotter. Vite + React + shadcn + AG Grid.
         </p>
       </header>
+      <CreateTradeForm />
       <TradeBlotter />
+      <Toaster richColors position="top-right" />
     </main>
   )
 }
