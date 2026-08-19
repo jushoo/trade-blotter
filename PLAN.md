@@ -352,9 +352,14 @@ Verification:
 
 ---
 
-## Step 11 — End-to-end check and polish
+## Step 11 — End-to-end check and polish ✅
 
-**Goal:** All functional requirements work together.
+**Goal:** All functional requirements work together. Verified: `pnpm typecheck`
+and `pnpm lint` pass (warnings only); two socket clients both received
+`trade:created`/`trade:amended`/`trade:cancelled` for a create→amend→cancel
+sequence; `409` returned for amend/cancel on a cancelled trade; READMEs updated
+(Drizzle not Prisma, two workspaces not three, canonical model, TanStack
+Query/Form, AG Grid v36).
 
 Tasks:
 
