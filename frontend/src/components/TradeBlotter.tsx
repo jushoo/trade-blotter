@@ -52,6 +52,7 @@ const columnDefs: ColDef<Trade>[] = [
     headerName: "Qty",
     width: 100,
     type: "numericColumn",
+    filter: "agNumberColumnFilter",
     valueFormatter: (p) =>
       p.value != null ? new Intl.NumberFormat("en-US").format(p.value) : "",
   },
@@ -60,6 +61,7 @@ const columnDefs: ColDef<Trade>[] = [
     headerName: "Price",
     width: 110,
     type: "numericColumn",
+    filter: "agNumberColumnFilter",
     valueFormatter: (p) =>
       p.value != null ? currencyFormatter.format(p.value) : "",
   },
@@ -68,6 +70,7 @@ const columnDefs: ColDef<Trade>[] = [
     field: "tradeDate",
     headerName: "Trade Date",
     width: 200,
+    filter: "agDateColumnFilter",
     valueFormatter: (p) =>
       p.value ? new Date(p.value as string).toLocaleString("en-US") : "",
   },

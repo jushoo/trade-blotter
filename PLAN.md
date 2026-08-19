@@ -271,7 +271,7 @@ Verification:
 
 ---
 
-## Step 8 — Update the grid columns for the canonical model
+## Step 8 — Update the grid columns for the canonical model ✅
 
 **Goal:** The grid must show all canonical fields with the correct formatting.
 
