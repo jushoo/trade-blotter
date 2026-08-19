@@ -22,8 +22,8 @@ build/
 npm-debug.log*
 pnpm-debug.log*
 
-# prisma
-database/prisma/migrations/dev.db*
+# drizzle
+backend/drizzle/
 
 # docker volumes
 .postgres-data/

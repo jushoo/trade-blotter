@@ -1,7 +1,7 @@
 # Trade Blotter — local development compose
 #
-# For now only the Postgres service is wired up. The `backend` and `frontend`
-# services below are stubs and will be enabled once their Dockerfiles exist.
+# Postgres + backend services. The frontend service is a stub and will be
+# enabled once its Dockerfile exists.
 
 services:
   db:
@@ -22,19 +22,22 @@ services:
       timeout: 5s
       retries: 10
 
-  # backend:
-  #   build:
-  #     context: .
-  #     dockerfile: backend/Dockerfile
-  #   container_name: trade-blotter-backend
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   environment:
-  #     DATABASE_URL: postgresql://blotter:blotter@db:5432/blotter
-  #   ports:
-  #     - "4000:4000"
-  #   command: pnpm --filter backend run dev
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: trade-blotter-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://blotter:blotter@db:5432/blotter?schema=public
+      PORT: "4000"
+      HOST: "0.0.0.0"
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "4000:4000"
 
   # frontend:
   #   build:
