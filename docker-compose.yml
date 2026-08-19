@@ -1,0 +1,51 @@
+# Trade Blotter — local development compose
+#
+# For now only the Postgres service is wired up. The `backend` and `frontend`
+# services below are stubs and will be enabled once their Dockerfiles exist.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: trade-blotter-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: blotter
+      POSTGRES_PASSWORD: blotter
+      POSTGRES_DB: blotter
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./.postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blotter -d blotter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: backend/Dockerfile
+  #   container_name: trade-blotter-backend
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     DATABASE_URL: postgresql://blotter:blotter@db:5432/blotter
+  #   ports:
+  #     - "4000:4000"
+  #   command: pnpm --filter backend run dev
+
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: frontend/Dockerfile
+  #   container_name: trade-blotter-frontend
+  #   depends_on:
+  #     - backend
+  #   ports:
+  #     - "5173:5173"
+  #   command: pnpm --filter frontend run dev
+
+volumes:
+  postgres-data:

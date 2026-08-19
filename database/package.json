@@ -1,0 +1,11 @@
+{
+  "name": "@trade-blotter/database",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "generate": "echo \"prisma generate (todo)\" && exit 0",
+    "migrate": "echo \"prisma migrate dev (todo)\" && exit 0",
+    "seed": "echo \"prisma db seed (todo)\" && exit 0",
+    "typecheck": "echo \"database typecheck (todo)\" && exit 0"
+  }
+}

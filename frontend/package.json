@@ -1,0 +1,12 @@
+{
+  "name": "@trade-blotter/frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"frontend dev (todo)\" && exit 0",
+    "build": "echo \"frontend build (todo)\" && exit 0",
+    "lint": "echo \"frontend lint (todo)\" && exit 0",
+    "typecheck": "echo \"frontend typecheck (todo)\" && exit 0"
+  }
+}

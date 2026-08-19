@@ -1,0 +1,13 @@
+{
+  "name": "@trade-blotter/backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"backend dev (todo)\" && exit 0",
+    "build": "echo \"backend build (todo)\" && exit 0",
+    "lint": "echo \"backend lint (todo)\" && exit 0",
+    "typecheck": "echo \"backend typecheck (todo)\" && exit 0",
+    "start": "echo \"backend start (todo)\" && exit 0"
+  }
+}
