@@ -3,40 +3,40 @@ import { db, trades } from './db'
 
 const rows = [
   {
+    tradeId: 'TRD-100001',
     symbol: 'AAPL',
     side: 'BUY' as const,
-    quantity: 100,
-    price: 224.5,
-    status: 'FILLED' as const,
-    counterparty: 'Goldman Sachs',
-    trader: 'A. Khan',
-    reference: 'AAPL-100',
+    quantity: 5000,
+    price: 227.45,
+    trader: 'JSMITH',
+    tradeDate: new Date('2026-08-18T09:15:23Z'),
+    status: 'ACTIVE' as const,
   },
   {
+    tradeId: 'TRD-100002',
     symbol: 'MSFT',
     side: 'SELL' as const,
-    quantity: 50,
-    price: 431.2,
-    status: 'OPEN' as const,
-    counterparty: 'Morgan Stanley',
-    trader: 'A. Khan',
-    reference: 'MSFT-50',
+    quantity: 1200,
+    price: 534.22,
+    trader: 'ABROWN',
+    tradeDate: new Date('2026-08-18T09:18:54Z'),
+    status: 'ACTIVE' as const,
   },
   {
-    symbol: 'NVDA',
+    tradeId: 'TRD-100003',
+    symbol: 'TSLA',
     side: 'BUY' as const,
-    quantity: 25,
-    price: 138.7,
-    status: 'PARTIAL' as const,
-    counterparty: 'JPMorgan',
-    trader: 'M. Lopez',
-    reference: 'NVDA-25',
+    quantity: 800,
+    price: 341.75,
+    trader: 'MJONES',
+    tradeDate: new Date('2026-08-18T09:20:11Z'),
+    status: 'CANCELLED' as const,
   },
 ]
 
 async function main() {
   console.log('Seeding trades...')
-  await db.insert(trades).values(rows).onConflictDoNothing()
+  await db.insert(trades).values(rows).onConflictDoNothing({ target: trades.tradeId })
   console.log('Seed complete.')
 }
 

@@ -3,7 +3,7 @@ import type { Server, Socket } from 'socket.io'
 // Trade event names. Keep these in sync with the frontend.
 export const TRADE_EVENTS = {
   CREATED: 'trade:created',
-  UPDATED: 'trade:updated',
+  AMENDED: 'trade:amended',
   CANCELLED: 'trade:cancelled',
 } as const
 
