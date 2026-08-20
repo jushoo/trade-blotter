@@ -1,7 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
-import { db, trades, type Trade as TradeRow } from '../db'
-import { eq, desc } from 'drizzle-orm'
+import { prisma } from '../db'
+import type { Trade as TradeRow } from '../../generated/prisma/client'
+import { makeTradeId, parseTradeId } from '../lib/trade-id'
 import { broadcastTrade, TRADE_EVENTS } from '../plugins/socket'
 
 /**
@@ -19,10 +20,10 @@ export interface TradeDTO {
   status: 'ACTIVE' | 'CANCELLED'
 }
 
-/** Map a database row to the canonical Trade DTO. */
+/** Map a database row to the canonical Trade DTO. The id is computed on read. */
 function toTradeDTO(row: TradeRow): TradeDTO {
   return {
-    id: row.tradeId,
+    id: makeTradeId(row.id),
     symbol: row.symbol,
     quantity: row.quantity,
     price: row.price,
@@ -52,28 +53,27 @@ const tradePatch = z.object({
 export const tradesRoutes: FastifyPluginAsync = async (fastify) => {
   // List all trades, newest trade date first.
   fastify.get('/trades', async () => {
-    const rows = await db.select().from(trades).orderBy(desc(trades.tradeDate))
+    const rows = await prisma.trade.findMany({ orderBy: { tradeDate: 'desc' } })
     return rows.map(toTradeDTO)
   })
 
   // Get one trade by its business id.
   fastify.get<{ Params: { id: string } }>('/trades/:id', async (req, reply) => {
-    const [row] = await db.select().from(trades).where(eq(trades.tradeId, req.params.id))
+    const serial = parseTradeId(req.params.id)
+    if (serial === null) return reply.code(404).send({ error: 'Trade not found' })
+
+    const row = await prisma.trade.findUnique({ where: { id: serial } })
     if (!row) return reply.code(404).send({ error: 'Trade not found' })
     return toTradeDTO(row)
   })
 
-  // Create a trade. The tradeId is a Postgres generated column derived from
-  // the serial id, so a single INSERT produces the full row.
+  // Create a trade. The serial id comes from the autoincrement sequence and the
+  // business id is derived from it when the row is read back.
   fastify.post('/trades', async (req, reply) => {
     const parsed = tradeInput.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() })
 
-    const [row] = await db
-      .insert(trades)
-      .values(parsed.data)
-      .returning()
-    if (!row) throw new Error('Insert returned no row')
+    const row = await prisma.trade.create({ data: parsed.data })
 
     const dto = toTradeDTO(row)
     broadcastTrade(fastify.io, TRADE_EVENTS.CREATED, dto)
@@ -85,18 +85,19 @@ export const tradesRoutes: FastifyPluginAsync = async (fastify) => {
     const parsed = tradePatch.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() })
 
-    const [existing] = await db.select().from(trades).where(eq(trades.tradeId, req.params.id))
+    const serial = parseTradeId(req.params.id)
+    if (serial === null) return reply.code(404).send({ error: 'Trade not found' })
+
+    const existing = await prisma.trade.findUnique({ where: { id: serial } })
     if (!existing) return reply.code(404).send({ error: 'Trade not found' })
     if (existing.status !== 'ACTIVE') {
       return reply.code(409).send({ error: 'The trade is not active' })
     }
 
-    const [row] = await db
-      .update(trades)
-      .set({ ...parsed.data, updatedAt: new Date() })
-      .where(eq(trades.tradeId, req.params.id))
-      .returning()
-    if (!row) return reply.code(404).send({ error: 'Trade not found' })
+    const row = await prisma.trade.update({
+      where: { id: serial },
+      data: { ...parsed.data, updatedAt: new Date() },
+    })
 
     const dto = toTradeDTO(row)
     broadcastTrade(fastify.io, TRADE_EVENTS.AMENDED, dto)
@@ -106,18 +107,19 @@ export const tradesRoutes: FastifyPluginAsync = async (fastify) => {
   // Cancel a trade. Sets the status to CANCELLED. Idempotent guard: a cancelled
   // trade cannot be cancelled again.
   fastify.delete<{ Params: { id: string } }>('/trades/:id', async (req, reply) => {
-    const [existing] = await db.select().from(trades).where(eq(trades.tradeId, req.params.id))
+    const serial = parseTradeId(req.params.id)
+    if (serial === null) return reply.code(404).send({ error: 'Trade not found' })
+
+    const existing = await prisma.trade.findUnique({ where: { id: serial } })
     if (!existing) return reply.code(404).send({ error: 'Trade not found' })
     if (existing.status === 'CANCELLED') {
       return reply.code(409).send({ error: 'The trade is not active' })
     }
 
-    const [row] = await db
-      .update(trades)
-      .set({ status: 'CANCELLED', updatedAt: new Date() })
-      .where(eq(trades.tradeId, req.params.id))
-      .returning()
-    if (!row) return reply.code(404).send({ error: 'Trade not found' })
+    const row = await prisma.trade.update({
+      where: { id: serial },
+      data: { status: 'CANCELLED', updatedAt: new Date() },
+    })
 
     const dto = toTradeDTO(row)
     broadcastTrade(fastify.io, TRADE_EVENTS.CANCELLED, dto)

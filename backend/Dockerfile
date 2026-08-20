@@ -11,6 +11,9 @@ COPY backend ./backend
 
 RUN pnpm install --frozen-lockfile
 
+# Generate the Prisma client before the build.
+RUN pnpm --filter backend run db:generate
+
 # Bundle the backend. node_modules deps are externalized and copied to prod.
 RUN pnpm --filter backend run build
 

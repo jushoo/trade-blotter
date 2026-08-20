@@ -9,16 +9,18 @@
     "start": "node dist/server.js",
     "lint": "echo \"backend lint (todo)\" && exit 0",
     "typecheck": "tsc --noEmit",
-    "db:push": "drizzle-kit push",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "seed": "tsx src/seed.ts"
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.36.4",
     "fastify": "^5.1.0",
     "pg": "^8.13.1",
     "socket.io": "^4.8.1",
@@ -27,8 +29,8 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
-    "drizzle-kit": "^0.30.0",
     "esbuild": "^0.24.0",
+    "prisma": "^7.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.2"
   }
