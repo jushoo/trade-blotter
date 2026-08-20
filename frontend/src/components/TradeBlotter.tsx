@@ -3,22 +3,44 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useTheme } from "@/components/theme-provider"
 import { AgGridReact } from "ag-grid-react"
 import {
-  AllCommunityModule,
+  CellStyleModule,
+  ClientSideRowModelModule,
   ModuleRegistry,
+  NumberFilterModule,
+  DateFilterModule,
+  TextFilterModule,
   enableDevValidations,
   themeQuartz,
   type ColDef,
 } from "ag-grid-community"
 import { RefreshCw, Pencil, Ban } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertTitle, AlertDescription, AlertAction } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { fetchTrades, cancelTrade } from "@/lib/api"
+import { tradeSchema } from "@/lib/validation"
 import { getSocket, TRADE_EVENTS } from "@/lib/socket"
 import { AmendTradeDialog } from "./AmendTradeDialog"
 import { toast } from "sonner"
 import type { Trade } from "@/types"
 
-// Register community modules once. (v36 API.)
-ModuleRegistry.registerModules([AllCommunityModule])
+// Register only the modules this grid uses. (v36 API.)
+ModuleRegistry.registerModules([
+  ClientSideRowModelModule,
+  CellStyleModule,
+  TextFilterModule,
+  NumberFilterModule,
+  DateFilterModule,
+])
 
 if (import.meta.env.DEV) {
   enableDevValidations()
@@ -63,7 +85,7 @@ function ActionsCell(props: {
         disabled={cancelled}
         onClick={() => ctx.onAmend(trade)}
       >
-        <Pencil />
+        <Pencil data-icon="inline-start" />
       </Button>
       <Button
         variant="ghost"
@@ -72,7 +94,7 @@ function ActionsCell(props: {
         disabled={cancelled}
         onClick={() => ctx.onCancel(trade)}
       >
-        <Ban />
+        <Ban data-icon="inline-start" />
       </Button>
     </div>
   )
@@ -81,26 +103,33 @@ function ActionsCell(props: {
 export function TradeBlotter() {
   const queryClient = useQueryClient()
   const { resolvedTheme } = useTheme()
-  const { data, isFetching, refetch } = useQuery<Trade[]>({
+  const { data, isFetching, error, refetch } = useQuery<Trade[]>({
     queryKey: ["trades"],
     queryFn: fetchTrades,
   })
 
   const [amendTrade, setAmendTrade] = useState<Trade | null>(null)
   const [amendOpen, setAmendOpen] = useState(false)
+  const [cancelTarget, setCancelTarget] = useState<Trade | null>(null)
 
   const onAmend = (trade: Trade) => {
     setAmendTrade(trade)
     setAmendOpen(true)
   }
 
-  const onCancel = async (trade: Trade) => {
-    if (!window.confirm(`Cancel trade ${trade.id}?`)) return
+  const onCancel = (trade: Trade) => {
+    setCancelTarget(trade)
+  }
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return
     try {
-      const cancelled = await cancelTrade(trade.id)
+      const cancelled = await cancelTrade(cancelTarget.id)
       toast.success(`Trade ${cancelled.id} cancelled.`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Cancel failed.")
+    } finally {
+      setCancelTarget(null)
     }
   }
 
@@ -109,12 +138,14 @@ export function TradeBlotter() {
     const socket = getSocket()
 
     const upsert = (trade: Trade) => {
+      const parsed = tradeSchema.safeParse(trade)
+      if (!parsed.success) return
       queryClient.setQueryData<Trade[]>(["trades"], (prev) => {
-        if (!prev) return [trade]
-        const idx = prev.findIndex((t) => t.id === trade.id)
-        if (idx === -1) return [trade, ...prev]
+        if (!prev) return [parsed.data]
+        const idx = prev.findIndex((t) => t.id === parsed.data.id)
+        if (idx === -1) return [parsed.data, ...prev]
         const next = prev.slice()
-        next[idx] = trade
+        next[idx] = parsed.data
         return next
       })
     }
@@ -221,10 +252,26 @@ export function TradeBlotter() {
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className={isFetching ? "animate-spin" : ""} />
+          <RefreshCw
+            data-icon="inline-start"
+            className={isFetching ? "animate-spin" : ""}
+          />
           Refresh
         </Button>
       </div>
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Failed to load trades</AlertTitle>
+          <AlertDescription>
+            {error instanceof Error ? error.message : "Unknown error."}
+          </AlertDescription>
+          <AlertAction>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </AlertAction>
+        </Alert>
+      ) : null}
       <div
         className="ag-theme-mode min-h-0 flex-1"
         data-ag-theme-mode={resolvedTheme === "dark" ? "dark" : "light"}
@@ -244,6 +291,28 @@ export function TradeBlotter() {
         open={amendOpen}
         onOpenChange={setAmendOpen}
       />
+      <AlertDialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel trade?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Trade {cancelTarget?.id} will be cancelled. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep trade</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={confirmCancel}>
+              Cancel trade
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

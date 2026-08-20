@@ -2,19 +2,6 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { useForm } from "@tanstack/react-form"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Field,
-  FieldLabel,
-  FieldError,
-} from "@/components/ui/field"
 import {
   Dialog,
   DialogContent,
@@ -23,16 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { TradeTextField, TradeSideField } from "@/components/TradeFields"
 import { createTrade } from "@/lib/api"
 import {
   createTradeSchema,
   createFormDefaults,
   toCreateInput,
 } from "@/lib/validation"
-
-function fieldErrors(errors: unknown): Array<{ message?: string } | undefined> {
-  return (errors ?? []) as unknown as Array<{ message?: string } | undefined>
-}
 
 export function CreateTradeDialog({
   open,
@@ -78,109 +62,53 @@ export function CreateTradeDialog({
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <form.Field name="symbol">
-              {(field) => {
-                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor="create-symbol">Symbol</FieldLabel>
-                    <Input
-                      id="create-symbol"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="AAPL"
-                    />
-                    {isInvalid && <FieldError errors={fieldErrors(field.state.meta.errors)} />}
-                  </Field>
-                )
-              }}
+              {(field) => (
+                <TradeTextField
+                  id="create-symbol"
+                  label="Symbol"
+                  placeholder="AAPL"
+                  field={field}
+                />
+              )}
             </form.Field>
 
             <form.Field name="side">
-              {(field) => {
-                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel>Side</FieldLabel>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(v) => v && field.handleChange(v as "BUY" | "SELL")}
-                    >
-                      <SelectTrigger className="w-full" aria-invalid={isInvalid}>
-                        <SelectValue placeholder="Select side" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BUY">BUY</SelectItem>
-                        <SelectItem value="SELL">SELL</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {isInvalid && <FieldError errors={fieldErrors(field.state.meta.errors)} />}
-                  </Field>
-                )
-              }}
+              {(field) => <TradeSideField id="create-side" field={field} />}
             </form.Field>
 
             <form.Field name="quantity">
-              {(field) => {
-                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor="create-quantity">Quantity</FieldLabel>
-                    <Input
-                      id="create-quantity"
-                      inputMode="numeric"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="100"
-                    />
-                    {isInvalid && <FieldError errors={fieldErrors(field.state.meta.errors)} />}
-                  </Field>
-                )
-              }}
+              {(field) => (
+                <TradeTextField
+                  id="create-quantity"
+                  label="Quantity"
+                  placeholder="100"
+                  inputMode="numeric"
+                  field={field}
+                />
+              )}
             </form.Field>
 
             <form.Field name="price">
-              {(field) => {
-                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor="create-price">Price</FieldLabel>
-                    <Input
-                      id="create-price"
-                      inputMode="decimal"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="227.45"
-                    />
-                    {isInvalid && <FieldError errors={fieldErrors(field.state.meta.errors)} />}
-                  </Field>
-                )
-              }}
+              {(field) => (
+                <TradeTextField
+                  id="create-price"
+                  label="Price"
+                  placeholder="227.45"
+                  inputMode="decimal"
+                  field={field}
+                />
+              )}
             </form.Field>
 
             <form.Field name="trader">
-              {(field) => {
-                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor="create-trader">Trader</FieldLabel>
-                    <Input
-                      id="create-trader"
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      aria-invalid={isInvalid}
-                      placeholder="JSMITH"
-                    />
-                    {isInvalid && <FieldError errors={fieldErrors(field.state.meta.errors)} />}
-                  </Field>
-                )
-              }}
+              {(field) => (
+                <TradeTextField
+                  id="create-trader"
+                  label="Trader"
+                  placeholder="JSMITH"
+                  field={field}
+                />
+              )}
             </form.Field>
           </div>
 

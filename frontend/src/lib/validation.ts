@@ -6,6 +6,19 @@ import type { CreateTradeInput, AmendTradeInput } from "@/types"
 
 export const sideSchema = z.enum(["BUY", "SELL"])
 
+export const tradeSchema = z.object({
+  id: z.string(),
+  symbol: z.string(),
+  quantity: z.number(),
+  price: z.number(),
+  side: sideSchema,
+  trader: z.string(),
+  tradeDate: z.string(),
+  status: z.enum(["ACTIVE", "CANCELLED"]),
+})
+
+export const tradeArraySchema = z.array(tradeSchema)
+
 const positiveIntString = z
   .string()
   .min(1, "Quantity is required.")
