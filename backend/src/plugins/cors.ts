@@ -9,8 +9,10 @@ async function corsPlugin(fastify: FastifyInstance) {
 
   await fastify.register(cors, {
     origin: origins.length === 1 ? origins[0] : origins,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
+    maxAge: 86400,
   })
 }
 

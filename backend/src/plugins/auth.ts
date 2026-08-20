@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
-import { fromNodeHeaders, toNodeHandler } from 'better-auth/node'
+import { fromNodeHeaders } from 'better-auth/node'
 import { auth, type Session, type User } from '../lib/auth'
 
 declare module 'fastify' {
@@ -34,24 +34,49 @@ async function authPlugin(fastify: FastifyInstance) {
     request.user = result.user
   })
 
-  // Mount Better Auth routes. Fastify consumes the body stream, so restore the
-  // parsed body onto the raw request for better-call before hijacking.
-  fastify.all('/api/auth/*', async (request, reply) => {
-    // `reply.hijack()` bypasses the reply pipeline, so @fastify/cors never runs
-    // its onSend hook for these responses. Emit the CORS headers manually.
-    const allowedOrigins = fastify.config.CORS_ORIGIN.split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean)
-    const origin = request.headers.origin
-    if (origin && allowedOrigins.includes(origin)) {
-      reply.raw.setHeader('Access-Control-Allow-Origin', origin)
-      reply.raw.setHeader('Access-Control-Allow-Credentials', 'true')
-      reply.raw.setHeader('Vary', 'Origin')
-    }
+  // Mount Better Auth routes. Build a Fetch Request from the Fastify request
+  // and forward the response through the normal reply pipeline, so Fastify
+  // hooks (CORS, serialization) still run. See:
+  // https://better-auth.com/docs/integrations/fastify
+  fastify.route({
+    method: ['GET', 'POST'],
+    url: '/api/auth/*',
+    async handler(request, reply) {
+      try {
+        const url = new URL(
+          request.url,
+          `${request.protocol}://${request.headers.host}`,
+        )
+        const headers = fromNodeHeaders(request.headers)
+        const req = new Request(url.toString(), {
+          method: request.method,
+          headers,
+          ...(request.body !== undefined
+            ? { body: JSON.stringify(request.body) }
+            : {}),
+        })
 
-    ;(request.raw as unknown as { body?: unknown }).body = request.body
-    reply.hijack()
-    await toNodeHandler(auth)(request.raw, reply.raw)
+        const response = await auth.handler(req)
+
+        reply.status(response.status)
+        response.headers.forEach((value, key) => {
+          if (key === 'set-cookie') return
+          reply.header(key, value)
+        })
+        const setCookies = response.headers.getSetCookie()
+        if (setCookies.length > 0) {
+          reply.header('set-cookie', setCookies)
+        }
+
+        return reply.send(response.body ? await response.text() : null)
+      } catch (error) {
+        fastify.log.error({ err: error }, 'authentication error')
+        return reply.status(500).send({
+          error: 'Internal authentication error',
+          code: 'AUTH_FAILURE',
+        })
+      }
+    },
   })
 }
 
