@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useTheme } from "@/components/theme-provider"
 import { AgGridReact } from "ag-grid-react"
 import {
   AllCommunityModule,
@@ -79,6 +80,7 @@ function ActionsCell(props: {
 
 export function TradeBlotter() {
   const queryClient = useQueryClient()
+  const { resolvedTheme } = useTheme()
   const { data, isFetching, refetch } = useQuery<Trade[]>({
     queryKey: ["trades"],
     queryFn: fetchTrades,
@@ -130,19 +132,21 @@ export function TradeBlotter() {
 
   const columnDefs = useMemo<ColDef<Trade>[]>(
     () => [
-      { field: "id", headerName: "ID", width: 120 },
-      { field: "symbol", headerName: "Symbol", width: 110 },
+      { field: "id", headerName: "ID", flex: 1, minWidth: 100 },
+      { field: "symbol", headerName: "Symbol", flex: 1, minWidth: 100 },
       {
         field: "side",
         headerName: "Side",
-        width: 90,
+        flex: 1,
+        minWidth: 90,
         cellClassRules: SIDE_CELL_CLASS_RULES,
         cellClass: "font-semibold",
       },
       {
         field: "quantity",
         headerName: "Qty",
-        width: 100,
+        flex: 1,
+        minWidth: 100,
         type: "numericColumn",
         filter: "agNumberColumnFilter",
         valueFormatter: (p) =>
@@ -151,17 +155,19 @@ export function TradeBlotter() {
       {
         field: "price",
         headerName: "Price",
-        width: 110,
+        flex: 1,
+        minWidth: 100,
         type: "numericColumn",
         filter: "agNumberColumnFilter",
         valueFormatter: (p) =>
           p.value != null ? currencyFormatter.format(p.value) : "",
       },
-      { field: "trader", headerName: "Trader", width: 110 },
+      { field: "trader", headerName: "Trader", flex: 1, minWidth: 100 },
       {
         field: "tradeDate",
         headerName: "Trade Date",
-        width: 200,
+        flex: 1.5,
+        minWidth: 180,
         filter: "agDateColumnFilter",
         valueFormatter: (p) =>
           p.value ? new Date(p.value as string).toLocaleString("en-US") : "",
@@ -169,7 +175,8 @@ export function TradeBlotter() {
       {
         field: "status",
         headerName: "Status",
-        width: 150,
+        flex: 1,
+        minWidth: 100,
         cellClassRules: STATUS_CELL_CLASS_RULES,
       },
       {
@@ -185,7 +192,13 @@ export function TradeBlotter() {
   )
 
   const defaultColDef = useMemo<ColDef>(
-    () => ({ resizable: true, sortable: true, filter: true, minWidth: 80 }),
+    () => ({
+      resizable: true,
+      sortable: true,
+      filter: true,
+      minWidth: 80,
+      filterParams: { buttons: ["apply", "reset"] },
+    }),
     [],
   )
 
@@ -197,7 +210,7 @@ export function TradeBlotter() {
   )
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {isFetching ? "Loading trades…" : `${data?.length ?? 0} trades`}
@@ -212,7 +225,10 @@ export function TradeBlotter() {
           Refresh
         </Button>
       </div>
-      <div className="h-[600px] w-full">
+      <div
+        className="ag-theme-mode min-h-0 flex-1"
+        data-ag-theme-mode={resolvedTheme === "dark" ? "dark" : "light"}
+      >
         <AgGridReact<Trade>
           rowData={data}
           columnDefs={columnDefs}
