@@ -34,7 +34,6 @@ export const createTradeSchema = z.object({
   side: sideSchema,
   quantity: positiveIntString,
   price: positiveNumberString,
-  trader: z.string().min(1, "Trader is required.").max(32, "Trader must be 32 chars or fewer."),
 })
 
 export const amendTradeSchema = z.object({
@@ -42,7 +41,6 @@ export const amendTradeSchema = z.object({
   side: sideSchema.optional(),
   quantity: positiveIntString.optional(),
   price: positiveNumberString.optional(),
-  trader: z.string().min(1).max(32).optional(),
 })
 
 export type CreateFormValues = z.infer<typeof createTradeSchema>
@@ -53,7 +51,6 @@ export const createFormDefaults: CreateFormValues = {
   side: "BUY",
   quantity: "",
   price: "",
-  trader: "",
 }
 
 /** Convert create form values to the API input. */
@@ -63,7 +60,6 @@ export function toCreateInput(values: CreateFormValues): CreateTradeInput {
     side: values.side,
     quantity: Number(values.quantity),
     price: Number(values.price),
-    trader: values.trader.trim(),
   }
 }
 
@@ -75,6 +71,5 @@ export function toAmendInput(values: AmendFormValues): AmendTradeInput {
   if (values.side) out.side = values.side
   if (values.quantity?.trim()) out.quantity = Number(values.quantity)
   if (values.price?.trim()) out.price = Number(values.price)
-  if (values.trader?.trim()) out.trader = values.trader.trim()
   return out
 }

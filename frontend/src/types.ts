@@ -12,13 +12,12 @@ export interface Trade {
   status: "ACTIVE" | "CANCELLED"
 }
 
-/** Payload sent to POST /trades (create). */
+/** Payload sent to POST /trades (create). Trader is set from the session. */
 export type CreateTradeInput = {
   symbol: string
   side: Trade["side"]
   quantity: number
   price: number
-  trader: string
 }
 
 /** Payload sent to PATCH /trades/:id (amend). All fields optional. */

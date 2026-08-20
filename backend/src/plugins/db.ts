@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin'
 import type { FastifyInstance } from 'fastify'
 import type { PrismaClient } from '../../generated/prisma/client'
-import { createPrismaBundle } from '../db'
+import { prisma, pool } from '../db'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -10,8 +10,6 @@ declare module 'fastify' {
 }
 
 async function dbPlugin(fastify: FastifyInstance) {
-  const { prisma, pool } = createPrismaBundle(fastify.config.DATABASE_URL)
-
   fastify.decorate('prisma', prisma)
 
   fastify.addHook('onClose', async () => {

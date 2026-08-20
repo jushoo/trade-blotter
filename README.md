@@ -44,6 +44,26 @@ to Postgres and then broadcasts `trade:created` / `trade:amended` /
 cache in sync from the socket stream, so changes made by one client appear in
 all connected clients without a page refresh.
 
+### Authentication
+
+Email and password authentication with Better Auth. Sessions use an HttpOnly
+cookie. The REST routes under `/trades` and the Socket.IO stream require a
+valid session.
+
+- Auth API: `/api/auth/*` (sign-up, sign-in, sign-out, session)
+- Frontend: sign-in page; the blotter UI shows only for a signed-in user
+
+Set these environment variables in `backend/.env`:
+
+```env
+BETTER_AUTH_SECRET=<32+ chars, generate with: openssl rand -base64 32>
+BETTER_AUTH_URL=http://localhost:4000
+```
+
+Note: `@better-auth/cli generate` (1.4.x) does not emit the `Account.issuer`
+field that Better Auth 1.7 needs. Keep the `issuer` field in the Prisma
+`Account` model if you regenerate the schema.
+
 ### Local execution
 
 ```bash

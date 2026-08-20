@@ -37,8 +37,11 @@ export async function getTrade(
 export async function createTrade(
   prisma: PrismaClient,
   input: TradeInput,
+  user: { id: string; name: string },
 ): Promise<TradeDTO> {
-  const row = await prisma.trade.create({ data: input })
+  const row = await prisma.trade.create({
+    data: { ...input, trader: user.name, userId: user.id },
+  })
   return toTradeDTO(row)
 }
 

@@ -60,7 +60,7 @@ export function CreateTradeDialog({
             form.handleSubmit()
           }}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <form.Field name="symbol">
               {(field) => (
                 <TradeTextField
@@ -95,17 +95,6 @@ export function CreateTradeDialog({
                   label="Price"
                   placeholder="227.45"
                   inputMode="decimal"
-                  field={field}
-                />
-              )}
-            </form.Field>
-
-            <form.Field name="trader">
-              {(field) => (
-                <TradeTextField
-                  id="create-trader"
-                  label="Trader"
-                  placeholder="JSMITH"
                   field={field}
                 />
               )}

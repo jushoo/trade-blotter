@@ -27,7 +27,6 @@ function tradeToDefaults(trade: Trade): AmendFormValues {
     side: trade.side,
     quantity: String(trade.quantity),
     price: String(trade.price),
-    trader: trade.trader,
   }
 }
 
@@ -64,7 +63,7 @@ function AmendForm({
         form.handleSubmit()
       }}
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <form.Field name="symbol">
           {(field) => (
             <TradeTextField
@@ -99,17 +98,6 @@ function AmendForm({
               label="Price"
               placeholder="227.45"
               inputMode="decimal"
-              field={field}
-            />
-          )}
-        </form.Field>
-
-        <form.Field name="trader">
-          {(field) => (
-            <TradeTextField
-              id="amend-trader"
-              label="Trader"
-              placeholder="JSMITH"
               field={field}
             />
           )}

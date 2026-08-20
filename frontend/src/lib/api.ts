@@ -15,7 +15,7 @@ async function parseError(res: Response): Promise<string> {
 
 /** Fetch all trades, newest trade date first. */
 export async function fetchTrades(): Promise<Trade[]> {
-  const res = await fetch(`${BASE_URL}/trades`)
+  const res = await fetch(`${BASE_URL}/trades`, { credentials: "include" })
   if (!res.ok) throw new Error(await parseError(res))
   return tradeArraySchema.parse(await res.json())
 }
@@ -24,6 +24,7 @@ export async function fetchTrades(): Promise<Trade[]> {
 export async function createTrade(input: CreateTradeInput): Promise<Trade> {
   const res = await fetch(`${BASE_URL}/trades`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   })
@@ -38,6 +39,7 @@ export async function amendTrade(
 ): Promise<Trade> {
   const res = await fetch(`${BASE_URL}/trades/${encodeURIComponent(id)}`, {
     method: "PATCH",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   })
@@ -49,6 +51,7 @@ export async function amendTrade(
 export async function cancelTrade(id: string): Promise<Trade> {
   const res = await fetch(`${BASE_URL}/trades/${encodeURIComponent(id)}`, {
     method: "DELETE",
+    credentials: "include",
   })
   if (!res.ok) throw new Error(await parseError(res))
   return tradeSchema.parse(await res.json())

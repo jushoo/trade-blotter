@@ -20,7 +20,6 @@ export const tradeInputSchema = z.object({
   side: sideSchema,
   quantity: z.number().int().positive(),
   price: z.number().positive(),
-  trader: z.string().min(1).max(32),
 })
 
 export const tradePatchSchema = tradeInputSchema.partial()
