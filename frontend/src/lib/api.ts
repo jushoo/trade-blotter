@@ -1,6 +1,7 @@
 import type { Trade, CreateTradeInput, AmendTradeInput } from "@/types"
+import { tradeSchema, tradeArraySchema } from "@/lib/validation"
 
-const BASE_URL = "http://localhost:4000"
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000"
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -16,14 +17,7 @@ async function parseError(res: Response): Promise<string> {
 export async function fetchTrades(): Promise<Trade[]> {
   const res = await fetch(`${BASE_URL}/trades`)
   if (!res.ok) throw new Error(await parseError(res))
-  return res.json() as Promise<Trade[]>
-}
-
-/** Fetch one trade by its business id. */
-export async function fetchTrade(id: string): Promise<Trade> {
-  const res = await fetch(`${BASE_URL}/trades/${encodeURIComponent(id)}`)
-  if (!res.ok) throw new Error(await parseError(res))
-  return res.json() as Promise<Trade>
+  return tradeArraySchema.parse(await res.json())
 }
 
 /** Create a new trade. Returns the created trade. */
@@ -34,7 +28,7 @@ export async function createTrade(input: CreateTradeInput): Promise<Trade> {
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseError(res))
-  return res.json() as Promise<Trade>
+  return tradeSchema.parse(await res.json())
 }
 
 /** Amend an active trade. Returns the amended trade. */
@@ -48,7 +42,7 @@ export async function amendTrade(
     body: JSON.stringify(input),
   })
   if (!res.ok) throw new Error(await parseError(res))
-  return res.json() as Promise<Trade>
+  return tradeSchema.parse(await res.json())
 }
 
 /** Cancel an active trade. Returns the cancelled trade. */
@@ -57,5 +51,5 @@ export async function cancelTrade(id: string): Promise<Trade> {
     method: "DELETE",
   })
   if (!res.ok) throw new Error(await parseError(res))
-  return res.json() as Promise<Trade>
+  return tradeSchema.parse(await res.json())
 }
