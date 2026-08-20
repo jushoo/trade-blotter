@@ -36,6 +36,8 @@ services:
       PORT: "4000"
       HOST: "0.0.0.0"
       CORS_ORIGIN: http://localhost:5173
+      BETTER_AUTH_SECRET: "t4zi7CAXkuoswiY/qS6wbga4dcw/1yV8AlwpnxUzyC8="
+      BETTER_AUTH_URL: http://localhost:4000
     ports:
       - "4000:4000"
 

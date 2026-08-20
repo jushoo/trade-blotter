@@ -19,7 +19,7 @@ let socket: Socket | null = null
 /** Singleton socket client. Connects once, reused across components. */
 export function getSocket(): Socket {
   if (!socket) {
-    socket = io(URL, { transports: ["websocket"] })
+    socket = io(URL, { transports: ["websocket"], withCredentials: true })
     socket.on("connect", () => {
       console.info("socket connected")
     })

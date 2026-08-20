@@ -1,6 +1,7 @@
+import 'dotenv/config'
 import pg from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from '../generated/prisma/client'
+import { PrismaClient } from '../generated/prisma/client.ts'
 
 export interface PrismaBundle {
   prisma: PrismaClient
@@ -14,3 +15,6 @@ export function createPrismaBundle(databaseUrl: string): PrismaBundle {
   const prisma = new PrismaClient({ adapter })
   return { prisma, pool }
 }
+
+/** Shared Prisma bundle. Used by routes and by Better Auth. */
+export const { prisma, pool } = createPrismaBundle(process.env.DATABASE_URL ?? '')

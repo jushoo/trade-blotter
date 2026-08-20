@@ -19,6 +19,7 @@ const tradesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get(
     '/',
     {
+      preHandler: [fastify.authenticate],
       schema: { response: { 200: tradeSchema.array() } },
     },
     async () => listTrades(fastify.prisma),
@@ -28,6 +29,7 @@ const tradesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.get(
     '/:id',
     {
+      preHandler: [fastify.authenticate],
       schema: { params: tradeParamsSchema, response: { 200: tradeSchema } },
     },
     async (request) => getTrade(fastify.prisma, request.params.id),
@@ -37,10 +39,17 @@ const tradesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.post(
     '/',
     {
+      preHandler: [fastify.authenticate],
       schema: { body: tradeInputSchema, response: { 201: tradeSchema } },
     },
     async (request, reply) => {
-      const dto = await createTrade(fastify.prisma, request.body)
+      const user = request.user
+      if (!user) {
+        const err = new Error('Unauthorized') as Error & { statusCode: number }
+        err.statusCode = 401
+        throw err
+      }
+      const dto = await createTrade(fastify.prisma, request.body, user)
       broadcastTrade(fastify.io, TRADE_EVENTS.CREATED, dto)
       reply.status(201)
       return dto
@@ -51,6 +60,7 @@ const tradesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.patch(
     '/:id',
     {
+      preHandler: [fastify.authenticate],
       schema: {
         params: tradeParamsSchema,
         body: tradePatchSchema,
@@ -68,6 +78,7 @@ const tradesRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.delete(
     '/:id',
     {
+      preHandler: [fastify.authenticate],
       schema: { params: tradeParamsSchema, response: { 200: tradeSchema } },
     },
     async (request) => {
