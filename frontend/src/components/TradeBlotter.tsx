@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useTheme } from "@/components/theme-provider"
 import { AgGridReact } from "ag-grid-react"
 import {
+  CellStyleModule,
   ClientSideRowModelModule,
   ModuleRegistry,
   NumberFilterModule,
@@ -35,6 +36,7 @@ import type { Trade } from "@/types"
 // Register only the modules this grid uses. (v36 API.)
 ModuleRegistry.registerModules([
   ClientSideRowModelModule,
+  CellStyleModule,
   TextFilterModule,
   NumberFilterModule,
   DateFilterModule,
