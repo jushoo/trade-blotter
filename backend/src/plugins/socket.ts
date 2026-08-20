@@ -1,27 +1,37 @@
-import type { Server, Socket } from 'socket.io'
+import fp from 'fastify-plugin'
+import type { FastifyInstance } from 'fastify'
+import { Server, type Socket } from 'socket.io'
 
-// Trade event names. Keep these in sync with the frontend.
-export const TRADE_EVENTS = {
-  CREATED: 'trade:created',
-  AMENDED: 'trade:amended',
-  CANCELLED: 'trade:cancelled',
-} as const
+declare module 'fastify' {
+  interface FastifyInstance {
+    io: Server
+  }
+}
 
-export function registerSocketHandlers(io: Server): void {
+async function socketPlugin(fastify: FastifyInstance) {
+  const io = new Server(fastify.server, {
+    cors: {
+      origin: fastify.config.CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+      methods: ['GET', 'POST'],
+    },
+  })
+
   io.on('connection', (socket: Socket) => {
-    console.log(`socket connected: ${socket.id}`)
+    fastify.log.info({ socketId: socket.id }, 'socket connected')
 
     socket.on('disconnect', (reason) => {
-      console.log(`socket disconnected: ${socket.id} (${reason})`)
+      fastify.log.info({ socketId: socket.id, reason }, 'socket disconnected')
     })
+  })
+
+  fastify.decorate('io', io)
+
+  fastify.addHook('onClose', async () => {
+    await io.close()
   })
 }
 
-// Helper: broadcast a trade event to all connected clients.
-export function broadcastTrade(
-  io: Server,
-  event: (typeof TRADE_EVENTS)[keyof typeof TRADE_EVENTS],
-  payload: unknown,
-): void {
-  io.emit(event, payload)
-}
+export default fp(socketPlugin, {
+  name: 'socket',
+  dependencies: ['config'],
+})

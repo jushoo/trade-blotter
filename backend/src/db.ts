@@ -1,12 +1,16 @@
-import 'dotenv/config'
 import pg from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '../generated/prisma/client'
 
-const url = process.env['DATABASE_URL']
-if (!url) throw new Error('DATABASE_URL is not set.')
+export interface PrismaBundle {
+  prisma: PrismaClient
+  pool: pg.Pool
+}
 
-const pool = new pg.Pool({ connectionString: url })
-const adapter = new PrismaPg(pool)
-
-export const prisma = new PrismaClient({ adapter })
+/** Create a Prisma client and its pg pool. The caller owns both lifecycles. */
+export function createPrismaBundle(databaseUrl: string): PrismaBundle {
+  const pool = new pg.Pool({ connectionString: databaseUrl })
+  const adapter = new PrismaPg(pool)
+  const prisma = new PrismaClient({ adapter })
+  return { prisma, pool }
+}

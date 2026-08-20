@@ -31,4 +31,4 @@ COPY --from=build /app/backend/dist ./backend/dist
 
 EXPOSE 4000
 WORKDIR /app/backend
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/app.js"]
