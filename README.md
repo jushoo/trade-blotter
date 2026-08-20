@@ -10,7 +10,7 @@ This is a **pnpm monorepo** with two workspaces:
 | Package    | Stack                                              | Description                                    |
 | ---------- | -------------------------------------------------- | ---------------------------------------------- |
 | `frontend` | React + TypeScript (Vite) + AG Grid + shadcn        | Blotter UI; consumes REST + Socket.IO stream   |
-| `backend`  | Node.js + Fastify + TypeScript + Socket.IO + Drizzle | REST API for mutations; emits realtime events  |
+| `backend`  | Node.js + Fastify + TypeScript + Socket.IO + Prisma ORM 7 | REST API for mutations; emits realtime events  |
 
 PostgreSQL runs in Docker Compose. The backend and frontend run on the host
 for local development.
@@ -48,7 +48,7 @@ all connected clients without a page refresh.
 
 ```bash
 pnpm up            # docker compose up -d  (Postgres only)
-pnpm db:migrate    # apply Drizzle migrations
+pnpm db:migrate    # apply Prisma migrations
 pnpm db:seed       # seed three sample trades
 pnpm dev           # run frontend + backend in parallel (host)
 ```
@@ -66,7 +66,7 @@ trade-blotter/
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
 ├── frontend/        # React + Vite + AG Grid + shadcn + TanStack Query/Form
-└── backend/         # Fastify + Socket.IO + Drizzle + PostgreSQL
+└── backend/         # Fastify + Socket.IO + Prisma ORM 7 + PostgreSQL
 ```
 
 ## Scripts
@@ -77,7 +77,7 @@ trade-blotter/
 | `pnpm build`     | Build all workspaces                         |
 | `pnpm typecheck` | Typecheck all workspaces                     |
 | `pnpm lint`      | Lint all workspaces                          |
-| `pnpm db:migrate`| Apply Drizzle migrations                     |
+| `pnpm db:migrate`| Apply Prisma migrations                      |
 | `pnpm db:seed`   | Seed sample trades                           |
 | `pnpm up`        | Start Postgres via Docker Compose            |
 | `pnpm down`      | Stop Docker Compose services                 |

@@ -1,0 +1,40 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+enum Side {
+  BUY
+  SELL
+
+  @@map("side")
+}
+
+enum TradeStatus {
+  ACTIVE
+  CANCELLED
+
+  @@map("trade_status")
+}
+
+model Trade {
+  id        Int         @id @default(autoincrement()) @map("id")
+  symbol    String      @map("symbol")
+  side      Side        @map("side")
+  quantity  Int         @map("quantity")
+  price     Float       @map("price")
+  trader    String      @map("trader")
+  tradeDate DateTime    @default(now()) @map("trade_date") @db.Timestamptz(6)
+  status    TradeStatus @default(ACTIVE) @map("status")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([symbol])
+  @@index([status])
+  @@index([tradeDate])
+  @@map("trades")
+}
