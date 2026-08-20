@@ -18,23 +18,39 @@ backend/
 ├── prisma.config.ts      # Prisma CLI config (schema path, DATABASE_URL)
 ├── generated/prisma/     # generated Prisma client (git-ignored)
 ├── src/
-│   ├── db.ts             # Prisma client + pg driver adapter
+│   ├── app.ts            # entry point: parse env, build, listen
+│   ├── server.ts         # buildServer() factory
+│   ├── db.ts             # Prisma client + pg driver adapter factory
+│   ├── schema/
+│   │   └── env.ts        # Zod env schema
+│   ├── schemas/
+│   │   └── trade.ts      # shared trade Zod schemas + DTO types
 │   ├── lib/
-│   │   └── trade-id.ts   # business id helper (TRD-100001)
+│   │   ├── trade-id.ts   # business id helper (TRD-100001)
+│   │   └── errors.ts     # typed HTTP errors
 │   ├── plugins/
-│   │   └── socket.ts     # Socket.IO server + event broadcast helpers
+│   │   ├── config.ts     # env decorator
+│   │   ├── zod.ts        # Zod validator/serializer compilers
+│   │   ├── cors.ts       # CORS allow-list
+│   │   ├── db.ts         # Prisma decorator + pool lifecycle
+│   │   ├── socket.ts     # Socket.IO server + broadcast helpers
+│   │   └── error-handler.ts # custom error and 404 handlers
 │   ├── routes/
-│   │   └── trades.ts     # REST trade CRUD
-│   ├── server.ts         # Fastify + Socket.IO bootstrap
-│   └── types.ts          # Fastify instance decorators
+│   │   └── trades/
+│   │       └── index.ts  # REST trade CRUD
+│   └── services/
+│       └── trades.ts     # trade business logic
 └── Dockerfile
 ```
 
 ## Scripts
 
 - `pnpm --filter backend run dev` — start dev server with hot reload
-- `pnpm --filter backend run build` — bundle to `dist/server.js` with esbuild
+- `pnpm --filter backend run build` — bundle to `dist/app.js` with esbuild
 - `pnpm --filter backend run start` — run the bundled server
+- `pnpm --filter backend run test` — run unit tests with vitest
+- `pnpm --filter backend run test:watch` — run tests in watch mode
+- `pnpm --filter backend run typecheck` — typecheck with tsc
 - `pnpm --filter backend run db:generate` — generate the Prisma client
 - `pnpm --filter backend run db:migrate` — create and apply a migration
 - `pnpm --filter backend run db:migrate:deploy` — apply migrations in production

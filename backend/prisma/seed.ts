@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { prisma } from '../src/db'
+import { createPrismaBundle } from '../src/db'
 
 // Seed rows let the autoincrement sequence assign the ids (1, 2, 3), so the
 // business ids become TRD-100001..100003. The seed only runs on an empty table,
@@ -35,20 +35,28 @@ const rows = [
 ]
 
 async function main() {
+  const databaseUrl = process.env['DATABASE_URL']
+  if (!databaseUrl) throw new Error('DATABASE_URL is not set.')
+
+  const { prisma, pool } = createPrismaBundle(databaseUrl)
+
   console.log('Seeding trades...')
   const count = await prisma.trade.count()
   if (count > 0) {
     console.log('Seed skipped: trades already present.')
+    await prisma.$disconnect()
+    await pool.end()
     return
   }
 
   await prisma.trade.createMany({ data: rows })
   console.log('Seed complete.')
+
+  await prisma.$disconnect()
+  await pool.end()
 }
 
-main()
-  .catch((error) => {
-    console.error(error)
-    process.exitCode = 1
-  })
-  .finally(() => process.exit())
+main().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})

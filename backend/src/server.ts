@@ -1,37 +1,59 @@
-import 'dotenv/config'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import Fastify from 'fastify'
-import cors from '@fastify/cors'
-import { Server } from 'socket.io'
-import { tradesRoutes } from './routes/trades'
-import { registerSocketHandlers } from './plugins/socket'
+import autoload from '@fastify/autoload'
+import type { Env } from './schema/env'
 
-const PORT = Number(process.env['PORT'] ?? 4000)
-const HOST = process.env['HOST'] ?? '0.0.0.0'
-const CORS_ORIGIN = process.env['CORS_ORIGIN'] ?? 'http://localhost:5173'
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
-async function start() {
-  const fastify = Fastify({ logger: true })
-
-  await fastify.register(cors, {
-    origin: CORS_ORIGIN,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  })
-
-  // Attach Socket.IO to the Fastify underlying HTTP server.
-  const io = new Server(fastify.server, {
-    cors: { origin: CORS_ORIGIN, methods: ['GET', 'POST'] },
-  })
-
-  fastify.decorate('io', io)
-
-  await fastify.register(tradesRoutes)
-  registerSocketHandlers(io)
-
-  await fastify.listen({ port: PORT, host: HOST })
-  fastify.log.info(`Backend HTTP+WS listening on http://${HOST}:${PORT}`)
+export interface BuildServerOptions {
+  config: Env
+  trustProxy?: boolean | string
 }
 
-start().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+export function buildServer({ config, trustProxy }: BuildServerOptions) {
+  const envToLogger = {
+    development: {
+      level: 'debug',
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          translateTime: 'HH:MM:ss Z',
+          ignore: 'pid,hostname',
+        },
+      },
+    },
+    production: {
+      level: config.LOG_LEVEL,
+    },
+    test: {
+      level: 'silent',
+    },
+  } as const
+
+  const server = Fastify({
+    logger: envToLogger[config.NODE_ENV],
+    trustProxy: trustProxy ?? false,
+    requestTimeout: 120_000,
+    bodyLimit: 1_048_576,
+    return503OnClosing: true,
+    forceCloseConnections: 'idle',
+    onProtoPoisoning: 'error',
+    onConstructorPoisoning: 'error',
+  })
+
+  // Shared plugins. Each plugin uses fastify-plugin and may depend on config.
+  server.register(autoload, {
+    dir: path.join(__dirname, 'plugins'),
+    options: { config },
+  })
+
+  // Routes stay encapsulated. Folder names become URL prefixes.
+  server.register(autoload, {
+    dir: path.join(__dirname, 'routes'),
+    autoHooks: true,
+    cascadeHooks: true,
+  })
+
+  return server
+}
